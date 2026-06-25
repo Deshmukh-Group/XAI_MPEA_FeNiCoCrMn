@@ -1,0 +1,31 @@
+# Python dependencies for the FeNiCoCrMn XAI workflow.
+# Versions are those used in development; pins can be relaxed if needed.
+
+# --- Core scientific stack ---
+numpy==1.26.3
+scipy==1.12.0
+pandas==2.2.0
+scikit-learn==1.4.0
+
+# --- Deep learning: 1D-CNN training + SHAP ---
+torch>=2.1
+torchmetrics==1.8.1
+
+# --- Interpretability (SHAP value generation/analysis) ---
+shap==0.48.0
+joblib==1.3.2
+
+# --- Plotting ---
+matplotlib==3.8.2
+seaborn==0.13.2
+
+# --- Utilities ---
+tqdm==4.65.0
+
+# --- Warren-Cowley short-range-order analysis (Bulk/USFE SHAP/WarrenC) ---
+# OVITO Python interface + WC modifier. ovito wheels: https://www.ovito.org/
+ovito
+WarrenCowleyParameters
+
+# Note: pytorchtools.py (EarlyStopping helper) is vendored in Bulk/Train/ and
+# USFE/Train/, so it is not a pip dependency.
