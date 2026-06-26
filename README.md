@@ -126,13 +126,11 @@ repository and a Zenodo archive:
 | Bulk targets — `Bulk/y_train.pt`, `y_test.pt`, `y_val.pt` | (18000, 5) / (5000, 5) / (2000, 5) `float32` | < 1 MB each |
 | USFE targets — `USFE/y_train.pt`, `y_test.pt`, `y_val.pt` | (18000, 1) / (5000, 1) / (2000, 1) `float32` | < 1 MB each |
 
-> **Note:** no descriptor-input tensor (any `X*.pt`) is committed — they are excluded by
-> `.gitignore` (`[Xx]*.pt`, which matches `X_val.pt`, `X_train.pt`, `X_test.pt`, `X_data.pt`
-> and `X_val_M1_augmented.pt` at any depth). This includes the validation and augmented-validation
-> tensors (`Bulk/X_val.pt`, `USFE/X_val.pt`, `Bulk/Train/X_val_M1_augmented.pt`). All `X*.pt`
+> **Note:** All `X*.pt`
 > files are on Zenodo (below). The committed `checkpoint.pt` weights let you run inference without them.
 
-### On Zenodo (all `X*.pt` descriptor tensors — DOI: `<add Zenodo DOI>`)
+### On Zenodo (all `X*.pt` descriptor tensors for training and testing — DOI: <a href="https://doi.org/10.5281/zenodo.20931695"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.20931695.svg" alt="DOI"></a>)
+
 
 | Item | Shape (dtype) | Approx. size |
 |------|------|------|
@@ -169,6 +167,8 @@ To retrain end-to-end, also download `X_train.pt` / `X_test.pt` and place them n
 
 ## Citation
 
+If you use this code or the dataset, please cite the paper:
+
 ```bibtex
 @unpublished{Wang_FeNiCoCrMn,
   title  = {Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys: Integrating Physics-Based Models, Explainable AI, and Experiment},
@@ -178,6 +178,28 @@ To retrain end-to-end, also download `X_train.pt` / `X_test.pt` and place them n
 }
 ```
 <!-- On acceptance: change to @article, add journal/volume/doi. -->
+
+You can also cite the Zenodo software repository and training dataset:
+
+```bibtex
+@software{Wang_FeNiCoCrMn_Code,
+  author       = {Wang, Fangxi and Iwanicki, Allana G. and Sose, Abhishek T. and Pressley, Lucas A. and McQueen, Tyrel M. and Deshmukh, Sanket A.},
+  title        = {Code for "Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys: Integrating Physics-Based Models, Explainable AI, and Experiment"},
+  year         = {2026},
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.20874698},
+  url          = {https://doi.org/10.5281/zenodo.20874698}
+}
+
+@dataset{Wang_FeNiCoCrMn_Data,
+  author       = {Wang, Fangxi and Iwanicki, Allana G. and Sose, Abhishek T. and Pressley, Lucas A. and McQueen, Tyrel M. and Deshmukh, Sanket A.},
+  title        = {Training and validation descriptor tensors for "Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys: Integrating Physics-Based Models, Explainable AI, and Experiment"},
+  year         = {2026},
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.20931695},
+  url          = {https://doi.org/10.5281/zenodo.20931695}
+}
+```
 
 
 
