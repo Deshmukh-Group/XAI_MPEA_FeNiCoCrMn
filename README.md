@@ -21,7 +21,9 @@ used to explore the FeNiCoCrMn composition space and generate a dataset of
 elastic properties and unstable stacking-fault energies (USFEs). One-dimensional
 convolutional neural networks (1D-CNN) are trained on atom-wise descriptors, and
 SHAP together with Warren–Cowley short-range-order analysis is used to interpret
-the structure–property relationships.
+the structure–property relationships. Composition-only surrogate models provide
+a structure-agnostic baseline for bulk modulus and USFE prediction directly from
+the five elemental concentrations.
 
 ## Repository structure
 
@@ -73,6 +75,12 @@ the structure–property relationships.
 │           ├── layer_analysis_overall_use.py   # Per-layer SHAP analysis
 │           ├── layer_analysis_MS1_Overall.png
 │           └── MPEA_data_aug_1.csv
+├── Compositon_only_model/     # Composition-only baseline models for bulk modulus and USFE
+│   ├── data_pso_Mn.dat       # Raw PSO table: five compositions plus six calculated properties
+│   ├── ML_composition_only.py # Data cleaning, train/test split, fitting, evaluation, and plotting
+│   ├── Models_Regressor.py    # RF, SGD, MLP, and Bayesian-ridge model definitions
+│   ├── Bulk/                  # Bulk-modulus models, scaler, metrics, and parity plots
+│   └── USFE/                  # USFE models, scaler, metrics, and parity plots
 ├── requirements.txt            # Python dependencies
 ├── LICENSE                     # MIT License
 └── README.md
@@ -125,6 +133,7 @@ repository and a Zenodo archive:
 | Trained 1D-CNN weights — `Bulk/Train/checkpoint.pt`, `USFE/Train/checkpoint.pt` | state_dict (13 tensors) | ~6 MB each |
 | Bulk targets — `Bulk/y_train.pt`, `y_test.pt`, `y_val.pt` | (18000, 5) / (5000, 5) / (2000, 5) `float32` | < 1 MB each |
 | USFE targets — `USFE/y_train.pt`, `y_test.pt`, `y_val.pt` | (18000, 1) / (5000, 1) / (2000, 1) `float32` | < 1 MB each |
+| Composition-only workflow — `Compositon_only_model/` | PSO input table, fitted scikit-learn models, scalers, metrics, and PDF parity plots | < 1 MB each |
 
 > **Note:** All `X*.pt`
 > files are on Zenodo (below). The committed `checkpoint.pt` weights let you run inference without them.
@@ -156,10 +165,19 @@ To retrain end-to-end, also download `X_train.pt` / `X_test.pt` and place them n
 3. **Train 1D-CNN models:**
    - Elastic properties: `cd Bulk/Train && python CNN_new.py`
    - USFE: `cd USFE/Train && python CNN_usf.py`
-4. **Interpretability (SHAP):** run `Step1 … Step8` in order inside `Bulk/SHAP/`
+4. **Train the composition-only baselines:** run from `Compositon_only_model/` so
+   the input file is found and outputs are written to its `Bulk/` and `USFE/`
+   subdirectories:
+   - Bulk modulus: `python ML_composition_only.py Bulk`
+   - USFE: `python ML_composition_only.py USFE`
+   - For a quicker fit without repeated cross-validation, append `--skip-cv`.
+   The script restores the 5 at.% lower bound to the five composition columns,
+   removes invalid and repeated compositions, applies a fixed 80/20 train/test
+   split, and compares random forest, SGD, MLP, and Bayesian-ridge regressors.
+5. **Interpretability (SHAP):** run `Step1 … Step8` in order inside `Bulk/SHAP/`
    (and `USFE/SHAP/`); per-layer analysis via `USFE/SHAP/layer/layer_analysis_overall_use.py`
-5. **Pair-interaction / Warren–Cowley SRO analysis:** `cd Bulk/Analyisis && python Analysis.py`
-6. **Reproduce figures:**
+6. **Pair-interaction / Warren–Cowley SRO analysis:** `cd Bulk/Analyisis && python Analysis.py`
+7. **Reproduce figures:**
    - Combined publication heatmap: `python Bulk/Analyisis/Analysis.py`
    - Layer-wise SHAP overall analysis: `python USFE/SHAP/layer/layer_analysis_overall_use.py`
    - Warren-Cowley SRO 5x5 panel plots: `python Bulk/SHAP/WarrenC/ana2.py`
