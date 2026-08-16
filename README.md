@@ -8,9 +8,9 @@ scripts used in the paper:
 > F. Wang, A. G. Iwanicki, A. T. Sose, L. A. Pressley, T. M. McQueen, and
 > S. A. Deshmukh, *"Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys:
 > Integrating Physics-Based Models, Explainable AI, and Experiment."*
-> Manuscript in preparation (2026).
+> Revised manuscript submitted to *Digital Discovery* (2026).
 >
-> (Journal, year, and DOI will be added upon acceptance.)
+> (Publication details and DOI will be added upon acceptance.)
 
 ---
 
@@ -216,7 +216,7 @@ If you use this code or the dataset, please cite the paper:
 @unpublished{Wang_FeNiCoCrMn,
   title  = {Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys: Integrating Physics-Based Models, Explainable AI, and Experiment},
   author = {Wang, Fangxi and Iwanicki, Allana G. and Sose, Abhishek T. and Pressley, Lucas A. and McQueen, Tyrel M. and Deshmukh, Sanket A.},
-  note   = {Manuscript in preparation},
+  note   = {Revised manuscript submitted to Digital Discovery},
   year   = {2026}
 }
 ```
