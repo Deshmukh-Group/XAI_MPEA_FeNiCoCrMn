@@ -152,22 +152,37 @@ repository and a Zenodo archive:
 > **Note:** All `X*.pt`
 > files are on Zenodo (below). The committed `checkpoint.pt` weights let you run inference without them.
 
-### On Zenodo (all `X*.pt` descriptor tensors for training and testing — DOI: <a href="https://doi.org/10.5281/zenodo.20931695"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.20931695.svg" alt="DOI"></a>)
+### On Zenodo (descriptor tensors and composition-disjoint split analysis — DOI: <a href="https://doi.org/10.5281/zenodo.20931695"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.20931695.svg" alt="DOI"></a>)
 
+The updated Zenodo deposit includes a zipped `Bulk/` directory. Extract it without flattening the
+directory structure: it retains the released structure-level split and adds the complete
+composition-disjoint reconstruction, split, retraining, and evaluation workflow.
 
-| Item | Shape (dtype) | Approx. size |
-|------|------|------|
-| Elastic validation input — `Bulk/X_val.pt` | (2000, 4000) `int64` | ~62 MB |
-| Elastic augmented validation input — `Bulk/Train/X_val_M1_augmented.pt` | (2000, 4000) `int64` | ~62 MB |
-| Elastic training/test inputs — `Bulk/X_train.pt`, `X_test.pt` | (18000, 4000) / (5000, 4000) `int64` | ~549 MB / ~153 MB |
-| USFE validation input — `USFE/X_val.pt` | (2000, 3600) `int64` | ~55 MB |
-| USFE training/test inputs — `USFE/X_train.pt`, `X_test.pt` | (18000, 3600) / (5000, 3600) `int64` | ~494 MB / ~137 MB |
-| USFE full descriptor set + targets — `USFE/X_data.pt`, `USFE/y_data.pt` | (25000, 3600) `int64` / (25000, 1) `float32` | ~687 MB |
+| Item | Archive path | Shape (dtype) | Approx. uncompressed size |
+|------|------|------|------|
+| Released elastic inputs | `Bulk/X_train.pt`, `X_val.pt`, `X_test.pt` | (18000, 4000) / (2000, 4000) / (5000, 4000) `int64` | ~550 / 62 / 153 MB |
+| Released elastic targets | `Bulk/y_train.pt`, `y_val.pt`, `y_test.pt` | (18000, 5) / (2000, 5) / (5000, 5) `float32` | < 1 MB total |
+| Released DAM1-reordered elastic inputs | `Bulk/M1/X_train_M1_augmented.pt`, `X_val_M1_augmented.pt`, `X_test_M1_augmented.pt` | (18000, 4000) / (2000, 4000) / (5000, 4000) `int64` | ~763 MB total |
+| Recombined pre-split elastic dataset | `Bulk/Composition_Disjoint_Split/step1/X_data.pt`, `y_data.pt` | (25000, 4000) `int64` / (25000, 5) `float32` | ~765 MB total |
+| Cleaned complete-replica dataset | `Bulk/Composition_Disjoint_Split/step2/X_clean.pt`, `y_clean.pt` | (24021, 4000) `int64` / (24021, 5) `float32` | ~736 MB total |
+| DAM1-reordered cleaned inputs | `Bulk/Composition_Disjoint_Split/step3/X_clean_M1_augmented.pt` | (24021, 4000) `int64` | ~734 MB |
+| Composition-disjoint 72:8:20 split | `Bulk/Composition_Disjoint_Split/step4/` | train/val/test: 17295 / 1923 / 4803 structures; 5765 / 641 / 1601 compositions | ~735 MB total |
+| Retrained 1D-CNN and evaluation outputs | `Bulk/Composition_Disjoint_Split/step5/` | checkpoint, predictions, loss history, metrics, and scripts | ~7 MB |
+| Split provenance and verification | `Bulk/Composition_Disjoint_Split/README.md`, `step1`–`step4` CSV/TXT reports | composition IDs, removal ledger, split indices, and validation reports | < 10 MB |
+| USFE validation input | `USFE/X_val.pt` | (2000, 3600) `int64` | ~55 MB |
+| USFE training/test inputs | `USFE/X_train.pt`, `X_test.pt` | (18000, 3600) / (5000, 3600) `int64` | ~494 MB / ~137 MB |
+| USFE full descriptor set + targets | `USFE/X_data.pt`, `USFE/y_data.pt` | (25000, 3600) `int64` / (25000, 1) `float32` | ~687 MB |
 
-To run the validation/SHAP pipeline, download the `X_val.pt` (and `X_val_M1_augmented.pt`) tensors
-from Zenodo and place them next to the committed `y_val.pt` in `Bulk/`, `Bulk/Train/`, and `USFE/`.
-To retrain end-to-end, also download `X_train.pt` / `X_test.pt` and place them next to the committed
-`y_train.pt` / `y_test.pt` in `Bulk/` and `USFE/`.
+The composition-disjoint split assigns all three independently randomized configurations of each
+composition to the same subset, so no composition is shared between training, validation, and test.
+After data-quality screening, it contains 8,007 compositions and 24,021 structures. See
+`Bulk/Composition_Disjoint_Split/README.md` in the Zenodo archive for the reconstruction commands,
+verification checks, and per-property model results.
+
+For the original validation/SHAP workflow, use the released `X_val.pt` and DAM1-reordered tensors
+with the committed target tensors and checkpoints. For end-to-end retraining, use the corresponding
+training and test tensors. Preserve the archive paths because the composition-disjoint scripts use
+relative paths between `step1/` through `step5/`.
 
 ## How to reproduce
 
