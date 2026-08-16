@@ -1,6 +1,6 @@
 # Code for "Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys: Integrating Physics-Based Models, Explainable AI, and Experiment"
 
-<a href="https://doi.org/10.5281/zenodo.20874698"><img src="https://zenodo.org/badge/1280726438.svg" alt="DOI"></a>
+<a href="https://doi.org/10.5281/zenodo.20874699"><img role="button" tabindex="0" id="modal-1280726438-trigger" aria-controls="modal-1280726438" aria-expanded="false" class="doi-modal-trigger block m-0" src="https://zenodo.org/badge/DOI/10.5281/zenodo.20874699.svg" alt="DOI: 10.5281/zenodo.20874699"></a>
 
 This repository contains the simulation code, datasets, and machine-learning
 scripts used in the paper:
@@ -23,15 +23,22 @@ convolutional neural networks (1D-CNN) are trained on atom-wise descriptors, and
 SHAP together with Warren–Cowley short-range-order analysis is used to interpret
 the structure–property relationships. Composition-only surrogate models provide
 a structure-agnostic baseline for bulk modulus and USFE prediction directly from
-the five elemental concentrations.
+the five elemental concentrations. A compact three-particle PSO/MD example is
+included to demonstrate the complete forward conversion from saved LAMMPS
+structures and property outputs to processed descriptors, deterministic tensor
+splits, and optional CNN training.
 
 ## Repository structure
 
 ```
 .
-├── PSO_MD/                     # PSO-guided MD dataset generation (LAMMPS) — see PSO_MD/README.md
-│   ├── PSO/                    # PSO driver (PSO_ANN3.py), config.json, SLURM/run harness
-│   └── template_dir/           # Per-evaluation template: 2NN MEAM potential, structures, elastic/GSFE LAMMPS inputs
+├── PSO_MD/                     # PSO-guided MD generation and forward preprocessing
+│   ├── PSO/                    # PSO driver, config, SLURM/run harness
+│   │   └── template_dir/       # MEAM potential, starting structures, elastic/GSFE inputs
+│   ├── Demo_results/           # Three completed particles: raw MD outputs + processed data
+│   │   ├── 0/, 1/, 2/
+│   │   └── prepare_tensors_and_train_cnn.py  # MD structures → arrays → tensors → CNN
+│   └── README.md               # Detailed PSO/MD and reproducibility instructions
 ├── Bulk/                       # Elastic-property workflow (1D-CNN predicts 5 targets: C11, C12, C44, bulk & Young's modulus)
 │   ├── y_train.pt, y_val.pt, y_test.pt  # Targets — (18000,5)/(2000,5)/(5000,5) float32, committed (X_train/X_val/X_test.pt → Zenodo)
 │   ├── DAM1/
@@ -86,15 +93,19 @@ the five elemental concentrations.
 └── README.md
 ```
 
-> The raw MD trajectory database (atomic structures) and **all descriptor-input tensors** (any
-> `X*.pt`, including the validation and augmented-validation tensors) are not committed here;
-> see **Data availability** below.
+> The complete production MD structure database and **all production
+> descriptor-input tensors** (any `X*.pt`, including validation and augmented
+> validation tensors) are not committed here. Three representative particle
+> directories with saved MD structures are included under `PSO_MD/Demo_results/`
+> for forward-workflow verification. See **Data availability** below.
 
 ## Requirements
 
-- **LAMMPS** (version <e.g. 2 Aug 2023>) for all MD simulations
-- **Interatomic potential:** 2NN MEAM for Fe–Ni–Co–Cr–Mn (files: `PSO_MD/template_dir/CoNiCrFeMn.meam`
-  + `PSO_MD/template_dir/library.meam`; reference: Choi et al., npj Comput. Mater. 4, 1 (2018))
+- **LAMMPS** with the MEAM package for all MD simulations
+- **Interatomic potential:** 2NN MEAM for Fe–Ni–Co–Cr–Mn (files:
+  `PSO_MD/PSO/template_dir/CoNiCrFeMn.meam` and
+  `PSO_MD/PSO/template_dir/library.meam`; reference: Choi et al.,
+  *npj Computational Materials* **4**, 1 (2018))
 - **Python** >= 3.10 with (see `requirements.txt`):
   - numpy, scipy, pandas, scikit-learn
   - **pytorch** (`torch`, `torchmetrics`) — the 1D-CNN models
@@ -114,7 +125,8 @@ pip install -r requirements.txt
 The PSO-guided MD framework generated **9,862 unique valid MPEA compositions** and
 **29,586 atomic structures** (elastic-property cells: 4000 atoms; USFE/GSFE cells:
 3600 atoms). The 1D-CNN models were trained on atom-wise element-ID descriptors
-(integer labels 1–5 for Fe/Ni/Co/Cr/Mn); the USFE model uses the top 25,000 structures.
+(LAMMPS types 1–5 map to Mn/Cr/Co/Fe/Ni); the USFE model uses the top 25,000
+structures.
 
 The descriptor inputs (`X*.pt`) are `int64` tensors of shape `(n_structures, n_atoms)` —
 one atom-wise element-ID row (labels 1–5) per structure. The targets (`y*.pt`) are
@@ -129,11 +141,12 @@ repository and a Zenodo archive:
 
 | Item | Shape (dtype) | Approx. size |
 |------|------|------|
-| All code, scripts, and analysis outputs (CSV/PNG/TXT) | — | < 1 MB each |
+| Most source code and analysis outputs (CSV/PNG/TXT) | — | < 1 MB each |
 | Trained 1D-CNN weights — `Bulk/Train/checkpoint.pt`, `USFE/Train/checkpoint.pt` | state_dict (13 tensors) | ~6 MB each |
 | Bulk targets — `Bulk/y_train.pt`, `y_test.pt`, `y_val.pt` | (18000, 5) / (5000, 5) / (2000, 5) `float32` | < 1 MB each |
 | USFE targets — `USFE/y_train.pt`, `y_test.pt`, `y_val.pt` | (18000, 1) / (5000, 1) / (2000, 1) `float32` | < 1 MB each |
 | Composition-only workflow — `Compositon_only_model/` | PSO input table, fitted scikit-learn models, scalers, metrics, and PDF parity plots | < 1 MB each |
+| Reproducible forward example — `PSO_MD/Demo_results/` | Three PSO particles; saved 4000/3600-atom structures, MD labels, processed arrays, and conversion/training script | ~197 MB total |
 
 > **Note:** All `X*.pt`
 > files are on Zenodo (below). The committed `checkpoint.pt` weights let you run inference without them.
@@ -159,13 +172,25 @@ To retrain end-to-end, also download `X_train.pt` / `X_test.pt` and place them n
 
 0. **Get the descriptor tensors:** no `X*.pt` is committed to GitHub — download them from Zenodo (see *Data availability*). For inference/SHAP, fetch `X_val.pt` (and `Bulk/Train/X_val_M1_augmented.pt`) into `Bulk/`, `Bulk/Train/`, and `USFE/`. For retraining, also fetch `X_train.pt` / `X_test.pt` into `Bulk/` and `USFE/`. (The `y_*.pt` targets and `checkpoint.pt` weights are already in the repo.)
 1. **Generate the dataset (PSO-guided MD):** `cd PSO_MD/PSO && sbatch submit_PSO.sh`  (see [PSO_MD/README.md](PSO_MD/README.md); edit cluster paths/modules first)
-2. **Augment descriptors (M1 reordering):**
+2. **Verify the forward MD-to-tensor workflow:** the included three-particle
+   example reproduces the processed arrays directly from the saved LAMMPS data
+   files, then creates deterministic 72:8:20 train/validation/test tensors:
+   ```bash
+   cd PSO_MD/Demo_results
+   python3 prepare_tensors_and_train_cnn.py --check-processed --prepare-only
+   ```
+   Use `--rebuild-processed` in place of `--check-processed` to regenerate the
+   four processed text files in each particle directory. Add `--property usfe`
+   for the USFE path or `--train --epochs 100` for a CNN smoke test. The example
+   contains 441 records and demonstrates data provenance and execution; it is
+   not intended to reproduce full-dataset model performance.
+3. **Augment descriptors (M1 reordering):**
    - Elastic: `cd Bulk/DAM1 && python data_augmentation.py`
    - USFE: `cd USFE/M1 && python data_augmentation.py`
-3. **Train 1D-CNN models:**
+4. **Train 1D-CNN models:**
    - Elastic properties: `cd Bulk/Train && python CNN_new.py`
    - USFE: `cd USFE/Train && python CNN_usf.py`
-4. **Train the composition-only baselines:** run from `Compositon_only_model/` so
+5. **Train the composition-only baselines:** run from `Compositon_only_model/` so
    the input file is found and outputs are written to its `Bulk/` and `USFE/`
    subdirectories:
    - Bulk modulus: `python ML_composition_only.py Bulk`
@@ -174,10 +199,10 @@ To retrain end-to-end, also download `X_train.pt` / `X_test.pt` and place them n
    The script restores the 5 at.% lower bound to the five composition columns,
    removes invalid and repeated compositions, applies a fixed 80/20 train/test
    split, and compares random forest, SGD, MLP, and Bayesian-ridge regressors.
-5. **Interpretability (SHAP):** run `Step1 … Step8` in order inside `Bulk/SHAP/`
+6. **Interpretability (SHAP):** run `Step1 … Step8` in order inside `Bulk/SHAP/`
    (and `USFE/SHAP/`); per-layer analysis via `USFE/SHAP/layer/layer_analysis_overall_use.py`
-6. **Pair-interaction / Warren–Cowley SRO analysis:** `cd Bulk/Analyisis && python Analysis.py`
-7. **Reproduce figures:**
+7. **Pair-interaction / Warren–Cowley SRO analysis:** `cd Bulk/Analyisis && python Analysis.py`
+8. **Reproduce figures:**
    - Combined publication heatmap: `python Bulk/Analyisis/Analysis.py`
    - Layer-wise SHAP overall analysis: `python USFE/SHAP/layer/layer_analysis_overall_use.py`
    - Warren-Cowley SRO 5x5 panel plots: `python Bulk/SHAP/WarrenC/ana2.py`

@@ -1,86 +1,207 @@
-# PSO-guided MD dataset generation
+# PSO-guided MD dataset generation and CNN preprocessing
 
-Particle-swarm optimization (PSO) coupled to LAMMPS molecular dynamics, used to
-explore the FeNiCoCrMn composition space and generate the elastic-constant and
-unstable-stacking-fault-energy (USFE) dataset.
+This directory contains the particle-swarm-optimization (PSO) and LAMMPS
+workflow used to explore the FeNiCoCrMn composition space, together with a
+three-particle example that reproduces the forward conversion from saved MD
+structures and calculated properties to CNN-ready tensors.
 
-## Layout
+## Repository layout
 
-```
+```text
 PSO_MD/
-├── PSO/                      # PSO driver + cluster run harness
-│   ├── PSO_ANN3.py           # PSO driver (launched by submit_PSO.sh)
-│   ├── config.json           # Swarm + search config (see below)
-│   ├── submit_PSO.sh         # SLURM job script (entry point)
-│   ├── PSO_bash.sh           # Builds the per-bird LAMMPS job list, runs via GNU parallel
-│   ├── file_utils.py         # Create/delete per-bird working directories
-│   ├── nodes_info.py         # Parse SLURM nodelist -> nodes file
-│   ├── replace_values.sh     # Inject composition into template inputs
-│   ├── save_initial_structure.sh
-│   └── bestresults.dat, result.txt, datafile.dat   # Example generated PSO-MD results
-└── template_dir/             # Per-evaluation template copied for each bird
-    ├── CoNiCrFeMn.meam, library.meam   # 2NN MEAM potential (Fe-Ni-Co-Cr-Mn)
-    ├── data_100.dat, data_111.dat      # Initial structures ([100] and [111] orientations)
-    ├── HEA.py, HEA111.py               # Random-alloy structure generation
-    ├── Header100.txt, Header111.txt    # LAMMPS data-file headers
-    ├── template.prm, value.sh          # Parameter template + result-extraction script
-    ├── elastic1/, elastic2/, elastic3/ # Elastic-constant LAMMPS inputs (elastic.in + elas_*.mod)
-    └── GSFE1/, GSFE2/, GSFE3/          # Generalized stacking-fault-energy inputs (GSFE.in)
+├── PSO/                              # PSO driver and cluster run harness
+│   ├── PSO_ANN3.py                   # main PSO driver
+│   ├── config.json                   # swarm and composition-space settings
+│   ├── submit_PSO.sh                 # SLURM entry point
+│   ├── PSO_bash.sh                   # launches elastic and GSFE calculations
+│   ├── file_utils.py                 # creates/deletes particle directories
+│   ├── replace_values.sh             # inserts the proposed composition
+│   ├── save_initial_structure.sh     # archives structures by replica/epoch
+│   └── template_dir/                 # copied into each PSO particle directory
+│       ├── data_100.dat              # 4000-atom starting structure
+│       ├── data_111.dat              # 3600-atom starting structure
+│       ├── HEA.py, HEA111.py         # random-alloy structure generation
+│       ├── elastic1/, elastic2/, elastic3/
+│       └── GSFE1/, GSFE2/, GSFE3/
+├── Demo_results/                     # three representative PSO particles
+│   ├── 0/, 1/, 2/                    # raw MD results + processed text data
+│   └── prepare_tensors_and_train_cnn.py
+├── prepare_tensors_and_train_cnn.py  # original production-data training script
+└── README.md
 ```
 
-## config.json
+The LAMMPS atom-type mapping used throughout the workflow is:
 
-| Key | Value | Meaning |
-|-----|-------|---------|
+| Atom type | Element |
+|---:|:---|
+| 1 | Mn |
+| 2 | Cr |
+| 3 | Co |
+| 4 | Fe |
+| 5 | Ni |
+
+## PSO/MD workflow
+
+The PSO proposes a five-component composition. For every particle and epoch,
+the workflow creates three independently randomized atomic configurations and
+runs elastic-property and generalized-stacking-fault-energy calculations:
+
+```text
+PSO composition
+  -> three randomized (100) and (111) structures
+  -> LAMMPS elastic1/2/3 and GSFE1/2/3 calculations
+  -> saved structures and extracted property files
+  -> atomic-type arrays and property labels
+  -> train/validation/test tensors
+  -> 1D-CNN
+```
+
+### Composition constraint
+
+The search is constrained to physically valid five-component compositions:
+
+- Each PSO variable is bounded by `min_var` and `max_var` in `config.json`.
+- `optimize1()` projects the five variables so their sum is `total = 75`.
+- The structure-generation scripts add a 5 at.% baseline for each element.
+- The resulting compositions sum to 100 at.% and each element lies between
+  approximately 5 and 35 at.%.
+
+The principal configuration values are:
+
+| Key | Current value | Meaning |
+|:---|:---|:---|
 | `num_birds` | 196 | swarm size |
-| `dim` | 5 | search dimensions (the 5 element fractions) |
-| `nresults` | 6 | targets per evaluation |
-| `target` | [300, 390, 246, 180, 250, 70] | target property values |
-| `wt` | [1.0, 0.7, 0.7, 0.7, 0.7, 1.0] | per-target weights in the fitness |
-| `min_var` / `max_var` | 0 / 30 | search-variable bounds (see composition constraint below) |
-| `total` | 75 | constrained sum of the 5 search variables |
-| `max_epochs` | 200 | PSO iterations |
-| `w`, `c1`, `c2` | 0.729, 1.49445, 1.49445 | inertia / cognitive / social coefficients |
+| `dim` | 5 | number of composition variables |
+| `nresults` | 6 | five elastic targets plus USFE |
+| `total` | 75 | constrained sum before the 5 at.% baselines |
+| `max_epochs` | 200 | maximum PSO iterations |
+| `w` | 0.729 | inertia coefficient |
+| `c1`, `c2` | 1.49445 | cognitive and social coefficients |
 
-### Composition constraint (constrained sampling)
+### Running the production PSO workflow
 
-The search is constrained so every sampled composition is a valid 5-component
-FeNiCoCrMn HEA summing to 100 at.%:
-
-- Each search variable `var[i]` is bounded to `[0, 30]` (`min_var`/`max_var`).
-- `optimize1()` (PSO_ANN3.py) projects every candidate so the five variables
-  **sum to `total = 75`**, re-applied at initialization and after each PSO update.
-- A **+5 at.% baseline is added per element** during structure generation
-  (`HEA.py`: `n_i = var[i] + 5`), so each element lands in **[5, 35] at.%**.
-
-Net result: 5 elements × 5 baseline + 75 = **100 at.%** (`N_total = 100` in
-`HEA.py`). The constraint guarantees physically meaningful equiatomic-region
-compositions rather than arbitrary fractions.
-
-## Requirements
-
-- **LAMMPS** with the MEAM package
-- **GNU parallel** and a SLURM scheduler
-- **Python 3** (standard library only: `json`, `math`, `random`, `subprocess`, …)
-
-> The submission/run scripts contain `<placeholders>` for all environment-specific
-> values — SLURM `<account>`, `<partition>`, `<email>`, module names
-> (`<fftw_module>`, `<python_module>`), and the LAMMPS binary
-> (`<lammps_binary>` / `<path_to_lammps_binary_dir>`). Fill these in for your own
-> cluster before running. The node list is generated automatically by
-> `submit_PSO.sh` from `$SLURM_JOB_NODELIST`.
-
-## How to run
+The production scripts are designed for a SLURM cluster with LAMMPS and GNU
+parallel. First replace the `<placeholders>` in `submit_PSO.sh` and
+`PSO_bash.sh` with the local account, partition, modules, and LAMMPS executable.
+Then run:
 
 ```bash
 cd PSO_MD/PSO
-sbatch submit_PSO.sh      # sets up nodes, then launches PSO_ANN3.py
+sbatch submit_PSO.sh
 ```
 
-`submit_PSO.sh` builds the node list, then `PSO_ANN3.py` drives the swarm: each
-bird gets a copy of `template_dir/`, its composition is injected, LAMMPS runs the
-`elastic*` and `GSFE*` jobs, and `value.sh` extracts the 6 targets that feed back
-into the PSO fitness. Results accumulate in `datafile.dat` / `bestresults.dat`.
+`file_utils.py` copies `PSO/template_dir/` into numeric particle directories
+under `PSO/`. The PSO driver updates their compositions, runs LAMMPS, reads the
+six extracted targets, and updates the swarm. Summary results accumulate in
+`datafile.dat` and `bestresults.dat`.
 
-> All cluster-specific values are `<placeholders>` and must be edited before
-> running elsewhere (see the note under **Requirements**).
+## Reproducible three-particle example
+
+`Demo_results/0`, `1`, and `2` are representative completed particle
+directories. They contain both sides of the forward preprocessing workflow:
+
+- `file_save/data_100_use<replica>_<epoch>.dat`: saved 4000-atom structures;
+- `file_save111/data_111_use<replica>_<epoch>.dat`: saved 3600-atom structures;
+- `elastic1.txt`, `elastic2.txt`, `elastic3.txt`: elastic-property labels for
+  the three randomized replicas;
+- `gsfe.txt`: the three raw USFE values for each epoch;
+- `type_file.txt`, `prop.txt`: processed elastic inputs and five labels;
+- `type_file_usf.txt`, `prop_usf.txt`: processed USFE inputs and labels.
+
+The processed example selects epochs 0-48: 49 epochs x 3 replicas = 147 records
+per particle and 441 records across particles 0-2. Records use replica-major
+ordering: replica 1 epochs 0-48, followed by replica 2 epochs 0-48, and then
+replica 3 epochs 0-48. Additional later raw files are retained as run
+provenance, but they are not part of this 441-record processed example.
+
+The five columns of `prop.txt` are bulk modulus, C11, C12, C44, and Young's
+modulus, in GPa. `prop_usf.txt` contains one USFE target per structure.
+
+### Install the Python dependencies
+
+From the repository root:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+The forward preprocessing example does not require rerunning LAMMPS because the
+necessary saved MD structures and results are included.
+
+### Verify the MD-to-processed-data conversion
+
+```bash
+cd PSO_MD/Demo_results
+python3 prepare_tensors_and_train_cnn.py --check-processed --prepare-only
+```
+
+This command reads every selected LAMMPS data file, extracts atom types, sorts
+them by atom ID, aligns them with the replica and epoch labels, and verifies that
+the regenerated content exactly matches the four checked-in processed files in
+each particle directory.
+
+To regenerate those processed files before creating the tensor splits, run:
+
+```bash
+python3 prepare_tensors_and_train_cnn.py --rebuild-processed --prepare-only
+```
+
+### Tensor split
+
+The example uses a deterministic two-stage, structure-level random split:
+
+1. Hold out 20% of the structures for testing (`random_state=42`).
+2. Assign 10% of the remaining 80% to validation (`random_state=43`).
+
+This gives nominal fractions of 72% training, 8% validation, and 20% testing.
+For the 441-record example, the exact counts are 316 training, 36 validation,
+and 89 test structures. The generated tensors and `split_metadata.json` are
+written to `Demo_results/generated/elastic/` by default.
+
+Prepare the USFE tensors instead with:
+
+```bash
+python3 prepare_tensors_and_train_cnn.py \
+    --property usfe \
+    --check-processed \
+    --prepare-only
+```
+
+### Optional CNN smoke test
+
+Train the elastic-property demonstration model with:
+
+```bash
+python3 prepare_tensors_and_train_cnn.py --train --epochs 100
+```
+
+For the USFE model:
+
+```bash
+python3 prepare_tensors_and_train_cnn.py \
+    --property usfe \
+    --train \
+    --epochs 100
+```
+
+The example contains only three PSO particles and is intended to demonstrate
+data provenance and code execution, not to reproduce the performance of models
+trained on the complete production dataset.
+
+## Software requirements
+
+For the complete PSO/MD workflow:
+
+- Python 3 with NumPy and pandas;
+- LAMMPS compiled with the MEAM package;
+- GNU parallel;
+- a SLURM scheduler, or local adaptations of the submission scripts.
+
+For preprocessing and CNN training:
+
+- NumPy;
+- scikit-learn;
+- PyTorch;
+- Matplotlib.
+
+See the repository-level `requirements.txt` for the full Python environment.
