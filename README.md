@@ -8,7 +8,7 @@ scripts used in the paper:
 > F. Wang, A. G. Iwanicki, A. T. Sose, L. A. Pressley, T. M. McQueen, and
 > S. A. Deshmukh, *"Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys:
 > Integrating Physics-Based Models, Explainable AI, and Experiment."*
-> Revised manuscript submitted to *Digital Discovery* (2026).
+> Manuscript submitted to *Digital Discovery* (2026).
 >
 > (Publication details and DOI will be added upon acceptance.)
 
@@ -62,9 +62,10 @@ splits, and optional CNN training.
 │   │   │   └── Save_data/                  #   regenerated-structure outputs
 │   │   └── *.csv, *.txt                    # Sample indices and per-structure SHAP outputs
 │   └── Analyisis/
-│       ├── Analysis.py                     # Pair-interaction / SRO heatmap analysis
-│       ├── combined_publication_heatmap.png
-│       └── *.csv                           # Matched pair summaries
+│       ├── generate_two_figures.py         # Pair-energy/correlation publication figures
+│       ├── pair_plot_data.csv              # Summary data for the 15 pair types
+│       ├── combined_publication_heatmap_corrected.png
+│       └── average_energy_vs_pair_count_correlation.png
 ├── USFE/                       # Unstable stacking-fault energy workflow (1D-CNN predicts 1 target)
 │   ├── y_train.pt, y_val.pt, y_test.pt     # Targets — (18000,1)/(2000,1)/(5000,1) float32, committed (X_train/X_val/X_test.pt → Zenodo)
 │   ├── M1/data_augmentation.py             # Descriptor reordering augmentation (M1 scheme)
@@ -201,9 +202,10 @@ To retrain end-to-end, also download `X_train.pt` / `X_test.pt` and place them n
    split, and compares random forest, SGD, MLP, and Bayesian-ridge regressors.
 6. **Interpretability (SHAP):** run `Step1 … Step8` in order inside `Bulk/SHAP/`
    (and `USFE/SHAP/`); per-layer analysis via `USFE/SHAP/layer/layer_analysis_overall_use.py`
-7. **Pair-interaction / Warren–Cowley SRO analysis:** `cd Bulk/Analyisis && python Analysis.py`
+7. **Pair-interaction publication figures:** `python Bulk/Analyisis/generate_two_figures.py`
 8. **Reproduce figures:**
-   - Combined publication heatmap: `python Bulk/Analyisis/Analysis.py`
+   - Combined pair-energy/correlation heatmap and energy-correlation scatter plot:
+     `python Bulk/Analyisis/generate_two_figures.py`
    - Layer-wise SHAP overall analysis: `python USFE/SHAP/layer/layer_analysis_overall_use.py`
    - Warren-Cowley SRO 5x5 panel plots: `python Bulk/SHAP/WarrenC/ana2.py`
    - SHAP summary analyses: `python Bulk/SHAP/Step7_Shap_analysis.py` and `python USFE/SHAP/Step7_Shap_analysis.py`
@@ -216,7 +218,7 @@ If you use this code or the dataset, please cite the paper:
 @unpublished{Wang_FeNiCoCrMn,
   title  = {Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys: Integrating Physics-Based Models, Explainable AI, and Experiment},
   author = {Wang, Fangxi and Iwanicki, Allana G. and Sose, Abhishek T. and Pressley, Lucas A. and McQueen, Tyrel M. and Deshmukh, Sanket A.},
-  note   = {Revised manuscript submitted to Digital Discovery},
+  note   = {Manuscript submitted to Digital Discovery},
   year   = {2026}
 }
 ```
