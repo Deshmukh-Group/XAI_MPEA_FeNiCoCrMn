@@ -155,7 +155,10 @@ repository and a Zenodo archive:
 > **Note:** All `X*.pt`
 > files are on Zenodo (below). The committed `checkpoint.pt` weights let you run inference without them.
 
-### On Zenodo (descriptor tensors and composition-disjoint split analysis — DOI: <a href="https://doi.org/10.5281/zenodo.20931695"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.20931695.svg" alt="DOI"></a>)
+### On Zenodo (descriptor tensors and composition-disjoint split analysis — DOI:<a href="https://doi.org/10.5281/zenodo.20931694">
+  <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.20931694.svg"
+       alt="DOI: 10.5281/zenodo.20931694">
+</a>
 
 The updated Zenodo deposit includes a zipped `Bulk/` directory. Extract it without flattening the
 directory structure: it retains the released structure-level split and adds the complete
@@ -259,8 +262,8 @@ You can also cite the Zenodo software repository and training dataset:
   title        = {Training and validation descriptor tensors for "Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys: Integrating Physics-Based Models, Explainable AI, and Experiment"},
   year         = {2026},
   publisher    = {Zenodo},
-  doi          = {10.5281/zenodo.20931695},
-  url          = {https://doi.org/10.5281/zenodo.20931695}
+  doi          = {10.5281/zenodo.20931694},
+  url          = {https://doi.org/10.5281/zenodo.20931694}
 }
 ```
 
