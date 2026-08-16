@@ -1,6 +1,9 @@
 # Code for "Data-Driven Design of Cantor-Type FeNiCoCrMn Alloys: Integrating Physics-Based Models, Explainable AI, and Experiment"
 
-<a href="https://doi.org/10.5281/zenodo.20874699"><img role="button" tabindex="0" id="modal-1280726438-trigger" aria-controls="modal-1280726438" aria-expanded="false" class="doi-modal-trigger block m-0" src="https://zenodo.org/badge/DOI/10.5281/zenodo.20874699.svg" alt="DOI: 10.5281/zenodo.20874699"></a>
+<a href="https://doi.org/10.5281/zenodo.20874698">
+  <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.20874698.svg"
+       alt="DOI: 10.5281/zenodo.20874698">
+</a>
 
 This repository contains the simulation code, datasets, and machine-learning
 scripts used in the paper:
